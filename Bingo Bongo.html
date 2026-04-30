@@ -545,14 +545,16 @@
     manager: "manager's full name"
   };
 
-  if (!localStorage.getItem('ticketNotes_cleared_v1')) {
+  if (!localStorage.getItem('ticketNotes_cleared_v3')) {
     localStorage.removeItem('ticketNotes');
-    localStorage.setItem('ticketNotes_cleared_v1', '1');
+    localStorage.setItem('ticketNotes_cleared_v3', '1');
   }
 
-  let people = [];
+  let people = JSON.parse(localStorage.getItem('ticketPeople') || '[]');
   let notes = JSON.parse(localStorage.getItem('ticketNotes') || '[]');
   let calYear, calMonth, selectedArchiveDay = null;
+
+  function savePeople() { localStorage.setItem('ticketPeople', JSON.stringify(people)); }
 
   const uploadBtn = document.getElementById('uploadBtn');
   const fileInput = document.getElementById('fileInput');
@@ -603,15 +605,19 @@
       })).filter(p => p.name);
 
       people.sort((a, b) => a.name.localeCompare(b.name));
-
-      personSelect.innerHTML = '<option value="">pick a person...</option>' +
-        people.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
-
-      uploadBtn.classList.add('loaded');
-      document.getElementById('uploadLabel').textContent = `${people.length} people`;
+      savePeople();
+      loadPeopleUI();
       toast(`${people.length} people loaded`);
     };
     reader.readAsArrayBuffer(file);
+  }
+
+  function loadPeopleUI() {
+    if (people.length === 0) return;
+    personSelect.innerHTML = '<option value="">pick a person...</option>' +
+      people.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+    uploadBtn.classList.add('loaded');
+    document.getElementById('uploadLabel').textContent = `${people.length} people`;
   }
 
   // Person select
@@ -901,6 +907,7 @@
     setTimeout(() => el.classList.remove('show'), 1500);
   }
 
+  loadPeopleUI();
   initCalendar();
   render();
 </script>
