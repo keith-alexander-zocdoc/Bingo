@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bingo Bongo List</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --pink: #f472b6;
+    --pink-light: #fce7f3;
+    --pink-dark: #ec4899;
+    --purple: #a78bfa;
+    --purple-light: #ede9fe;
+    --bg: #fefcff;
+    --card: #ffffff;
+    --text: #1e1b4b;
+    --text-light: #6b7280;
+    --text-xlight: #9ca3af;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 20% 50%, rgba(244,114,182,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(167,139,250,0.06) 0%, transparent 50%);
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px 32px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+    position: relative;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--pink-dark), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  header p {
+    color: var(--text-light);
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+
+  .upload-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .upload-btn:hover { border-color: var(--pink); color: var(--pink-dark); }
+  .upload-btn.loaded { border-color: var(--purple); color: var(--purple); background: var(--purple-light); }
+  .upload-btn input { display: none; }
+
+  /* Note input */
+  .note-input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+
+  .input-top {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .input-top select {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    background: white;
+  }
+
+  .input-top select:focus { border-color: var(--pink); }
+
+  .person-info {
+    display: none;
+    font-size: 0.7rem;
+    color: var(--text-light);
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    background: #f9fafb;
+    border-radius: 6px;
+  }
+
+  .person-info.show { display: block; }
+  .person-info span + span::before { content: ' · '; }
+
+  .note-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .note-row textarea {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    line-height: 1.4;
+    transition: border-color 0.2s;
+  }
+
+  .note-row textarea:focus { border-color: var(--pink); }
+
+  .btn-add {
+    padding: 0 18px;
+    background: linear-gradient(135deg, var(--pink-dark), var(--purple));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-add:hover { opacity: 0.9; }
+
+  /* Today's notes */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-light);
+  }
+
+  .section-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .notes-count {
+    font-size: 0.7rem;
+    color: var(--text-light);
+    background: var(--pink-light);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .btn-small {
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+  }
+
+  .btn-small:hover { border-color: var(--pink); color: var(--pink-dark); }
+
+  /* Note card — name-first layout */
+  .note-item {
+    background: var(--card);
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    position: relative;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s;
+  }
+
+  .note-item:hover { box-shadow: var(--shadow-lg); }
+
+  .note-person {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    margin-bottom: 4px;
+  }
+
+  .note-body {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    color: var(--text);
+  }
+
+  .note-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f3;
+  }
+
+  .note-details {
+    display: flex;
+    gap: 12px;
+  }
+
+  .note-detail {
+    font-size: 0.65rem;
+    color: var(--text-xlight);
+    white-space: nowrap;
+  }
+
+  .note-detail-label {
+    font-weight: 600;
+    color: var(--text-light);
+  }
+
+  .note-time {
+    font-size: 0.625rem;
+    color: var(--text-xlight);
+    flex-shrink: 0;
+  }
+
+  .note-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .note-item:hover .note-actions { opacity: 1; }
+
+  .note-del {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    color: var(--text-light);
+  }
+
+  .note-del:hover { background: #fee2e2; color: #ef4444; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-light);
+    font-size: 0.8rem;
+  }
+
+  /* Archive section */
+  .archive-section { margin-top: 36px; }
+
+  .archive-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .archive-divider::before,
+  .archive-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .archive-divider span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-xlight);
+  }
+
+  /* Mini calendar */
+  .calendar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+  }
+
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .cal-selectors {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cal-select {
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--text);
+    background: white;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .cal-select:focus { border-color: var(--pink); }
+
+  .cal-nav {
+    display: flex;
+    gap: 4px;
+  }
+
+  .cal-nav button {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .cal-nav button:hover { border-color: var(--pink); color: var(--pink-dark); }
+
+  .cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    text-align: center;
+  }
+
+  .cal-dow {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-xlight);
+    padding: 4px 0;
+    text-transform: uppercase;
+  }
+
+  .cal-day {
+    font-size: 0.7rem;
+    padding: 6px 0;
+    border-radius: 6px;
+    color: var(--text-light);
+    cursor: default;
+    position: relative;
+    transition: all 0.15s;
+  }
+
+  .cal-day.empty { visibility: hidden; }
+  .cal-day.today { font-weight: 700; color: var(--pink-dark); }
+
+  .cal-day.has-notes {
+    cursor: pointer;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .cal-day.has-notes::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--pink);
+  }
+
+  .cal-day.has-notes:hover { background: var(--pink-light); }
+  .cal-day.has-notes.selected { background: var(--pink-light); color: var(--pink-dark); font-weight: 600; }
+
+  /* Archive day dropdown */
+  .archive-day-notes {
+    margin-top: 4px;
+    margin-bottom: 12px;
+  }
+
+  .archive-day-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    padding-left: 2px;
+  }
+
+  .archive-note {
+    background: var(--card);
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 6px;
+  }
+
+  .archive-note .note-person { font-size: 0.875rem; margin-bottom: 2px; }
+  .archive-note .note-body { font-size: 0.8rem; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: transform 0.3s ease;
+    z-index: 100;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Bingo Bongo</h1>
+    <p>Dodge Dorango</p>
+    <button class="upload-btn" id="uploadBtn">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <span id="uploadLabel">Upload Excel</span>
+    </button>
+  </header>
+
+  <!-- Note input -->
+  <div class="note-input">
+    <div class="input-top">
+      <select id="personSelect">
+        <option value="">pick a person...</option>
+      </select>
+    </div>
+    <div class="person-info" id="personInfo"></div>
+    <div class="note-row">
+      <textarea id="noteField" placeholder="jot it down..." rows="1" oninput="autoGrow(this)"></textarea>
+      <button class="btn-add" onclick="addNote()">+</button>
+    </div>
+  </div>
+
+  <!-- Today's notes -->
+  <div id="todaySection" style="display:none;">
+    <div class="section-header">
+      <span class="section-label">Today</span>
+      <div class="section-actions">
+        <span class="notes-count" id="todayCount">0</span>
+        <button class="btn-small" onclick="exportNotes('today')">Export Today</button>
+      </div>
+    </div>
+    <div id="todayList"></div>
+  </div>
+
+  <div id="emptyState" class="empty-state">
+    No notes yet — jot your first one above
+  </div>
+
+  <!-- Archive -->
+  <div id="archiveSection" class="archive-section" style="display:none;">
+    <div class="archive-divider"><span>Archive</span></div>
+    <div class="calendar" id="calendar"></div>
+    <div id="archiveNotes"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const COLUMN_MAP = {
+    name: 'full name',
+    team: 'cost center',
+    position: 'job title',
+    manager: "manager's full name"
+  };
+
+  if (!localStorage.getItem('ticketNotes_cleared_v1')) {
+    localStorage.removeItem('ticketNotes');
+    localStorage.setItem('ticketNotes_cleared_v1', '1');
+  }
+
+  let people = [];
+  let notes = JSON.parse(localStorage.getItem('ticketNotes') || '[]');
+  let calYear, calMonth, selectedArchiveDay = null;
+
+  const uploadBtn = document.getElementById('uploadBtn');
+  const fileInput = document.getElementById('fileInput');
+  const personSelect = document.getElementById('personSelect');
+  const personInfo = document.getElementById('personInfo');
+
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function noteDay(n) {
+    const d = new Date(n.created);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Excel upload — auto-map columns
+  uploadBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      if (data.length < 2) { toast('File needs a header row + data'); return; }
+
+      const headers = data[0].map(String);
+      const rows = data.slice(1).filter(r => r.some(c => c != null && c !== ''));
+      const lower = headers.map(h => h.toLowerCase().trim());
+
+      const nameIdx = lower.indexOf(COLUMN_MAP.name);
+      const teamIdx = lower.indexOf(COLUMN_MAP.team);
+      const posIdx = lower.indexOf(COLUMN_MAP.position);
+      const mgrIdx = lower.indexOf(COLUMN_MAP.manager);
+
+      if (nameIdx === -1) {
+        toast('Could not find "Full Name" column');
+        return;
+      }
+
+      people = rows.map(row => ({
+        name: (row[nameIdx] || '').toString().trim(),
+        team: teamIdx >= 0 ? (row[teamIdx] || '').toString().trim() : '',
+        position: posIdx >= 0 ? (row[posIdx] || '').toString().trim() : '',
+        manager: mgrIdx >= 0 ? (row[mgrIdx] || '').toString().trim() : ''
+      })).filter(p => p.name);
+
+      people.sort((a, b) => a.name.localeCompare(b.name));
+
+      personSelect.innerHTML = '<option value="">pick a person...</option>' +
+        people.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+
+      uploadBtn.classList.add('loaded');
+      document.getElementById('uploadLabel').textContent = `${people.length} people`;
+      toast(`${people.length} people loaded`);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Person select
+  personSelect.addEventListener('change', () => {
+    const idx = personSelect.value;
+    if (idx === '') {
+      personInfo.classList.remove('show');
+      personInfo.innerHTML = '';
+      return;
+    }
+    const p = people[idx];
+    const parts = [p.position, p.team, p.manager ? 'Manager: ' + p.manager : ''].filter(Boolean);
+    if (parts.length) {
+      personInfo.innerHTML = parts.map(t => '<span>' + esc(t) + '</span>').join('');
+      personInfo.classList.add('show');
+    } else {
+      personInfo.classList.remove('show');
+    }
+  });
+
+  function autoGrow(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // Add note
+  function addNote() {
+    const text = document.getElementById('noteField').value.trim();
+    if (!text) { toast('Write something first!'); return; }
+
+    const personIdx = personSelect.value;
+    const p = personIdx !== '' ? people[personIdx] : null;
+
+    const note = {
+      id: Date.now(),
+      text,
+      person: p ? p.name : '',
+      team: p ? p.team : '',
+      position: p ? p.position : '',
+      manager: p ? p.manager : '',
+      created: new Date().toISOString()
+    };
+
+    notes.unshift(note);
+    save();
+    render();
+
+    document.getElementById('noteField').value = '';
+    document.getElementById('noteField').style.height = 'auto';
+    personSelect.value = '';
+    personInfo.classList.remove('show');
+    personInfo.innerHTML = '';
+    toast('Added');
+  }
+
+  document.getElementById('noteField').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); }
+  });
+
+  function deleteNote(id) {
+    notes = notes.filter(n => n.id !== id);
+    save();
+    render();
+  }
+
+  function save() { localStorage.setItem('ticketNotes', JSON.stringify(notes)); }
+
+  // Render
+  function render() {
+    const today = todayStr();
+    const todayNotes = notes.filter(n => noteDay(n) === today);
+    const archiveNotes = notes.filter(n => noteDay(n) !== today);
+
+    // Today
+    const todaySection = document.getElementById('todaySection');
+    const todayList = document.getElementById('todayList');
+    const emptyState = document.getElementById('emptyState');
+
+    if (todayNotes.length === 0) {
+      todaySection.style.display = 'none';
+      emptyState.style.display = archiveNotes.length > 0 ? 'none' : 'block';
+    } else {
+      todaySection.style.display = 'block';
+      emptyState.style.display = 'none';
+      document.getElementById('todayCount').textContent = todayNotes.length;
+      todayList.innerHTML = todayNotes.map(renderNoteCard).join('');
+    }
+
+    // Archive
+    const archiveSection = document.getElementById('archiveSection');
+    if (archiveNotes.length > 0) {
+      archiveSection.style.display = 'block';
+      renderCalendar();
+      if (selectedArchiveDay) renderArchiveDay(selectedArchiveDay);
+    } else {
+      archiveSection.style.display = 'none';
+    }
+  }
+
+  function renderDetailLines(n) {
+    const lines = [];
+    if (n.position) lines.push('<span class="note-detail"><span class="note-detail-label">Position:</span> ' + esc(n.position) + '</span>');
+    if (n.team) lines.push('<span class="note-detail"><span class="note-detail-label">Team:</span> ' + esc(n.team) + '</span>');
+    if (n.manager) lines.push('<span class="note-detail"><span class="note-detail-label">Manager:</span> ' + esc(n.manager) + '</span>');
+    return lines.join('');
+  }
+
+  function renderNoteCard(n) {
+    const time = new Date(n.created).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `
+      <div class="note-item">
+        <div class="note-actions">
+          <button class="note-del" onclick="deleteNote(${n.id})" title="Delete">&#x2715;</button>
+        </div>
+        <div class="note-person">${esc(n.person || 'No person')}</div>
+        <div class="note-body">${esc(n.text)}</div>
+        <div class="note-footer">
+          <div class="note-details">${renderDetailLines(n)}</div>
+          <span class="note-time">${time}</span>
+        </div>
+      </div>`;
+  }
+
+  // Calendar
+  function initCalendar() {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+  }
+
+  function archiveDaysSet() {
+    const today = todayStr();
+    const days = new Set();
+    notes.forEach(n => {
+      const d = noteDay(n);
+      if (d !== today) days.add(d);
+    });
+    return days;
+  }
+
+  function renderCalendar() {
+    const days = archiveDaysSet();
+    const today = todayStr();
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const first = new Date(calYear, calMonth, 1);
+    const startDow = first.getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const todayDate = new Date();
+
+    const archiveYears = new Set();
+    notes.forEach(n => {
+      const d = noteDay(n);
+      if (d !== today) archiveYears.add(parseInt(d.split('-')[0]));
+    });
+    archiveYears.add(calYear);
+    const sortedYears = [...archiveYears].sort((a, b) => b - a);
+
+    const monthOpts = monthNames.map((m, i) =>
+      `<option value="${i}" ${i === calMonth ? 'selected' : ''}>${m}</option>`
+    ).join('');
+
+    const yearOpts = sortedYears.map(y =>
+      `<option value="${y}" ${y === calYear ? 'selected' : ''}>${y}</option>`
+    ).join('');
+
+    let html = `
+      <div class="cal-header">
+        <div class="cal-selectors">
+          <select class="cal-select" onchange="setMonth(+this.value)">${monthOpts}</select>
+          <select class="cal-select" onchange="setYear(+this.value)">${yearOpts}</select>
+        </div>
+        <div class="cal-nav">
+          <button onclick="prevMonth()">&#8249;</button>
+          <button onclick="nextMonth()">&#8250;</button>
+        </div>
+      </div>
+      <div class="cal-days">
+        <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
+        <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div><div class="cal-dow">Sa</div>`;
+
+    for (let i = 0; i < startDow; i++) html += '<div class="cal-day empty"></div>';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const isToday = dateStr === today;
+      const hasNotes = days.has(dateStr);
+      const isSelected = dateStr === selectedArchiveDay;
+      const classes = ['cal-day'];
+      if (isToday) classes.push('today');
+      if (hasNotes) classes.push('has-notes');
+      if (isSelected) classes.push('selected');
+      const click = hasNotes ? ` onclick="selectArchiveDay('${dateStr}')"` : '';
+      html += `<div class="${classes.join(' ')}"${click}>${d}</div>`;
+    }
+
+    html += '</div>';
+    document.getElementById('calendar').innerHTML = html;
+  }
+
+  function prevMonth() {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    selectedArchiveDay = null;
+    document.getElementById('archiveNotes').innerHTML = '';
+    renderCalendar();
+  }
+
+  function nextMonth() {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    selectedArchiveDay = null;
+    document.getElementById('archiveNotes').innerHTML = '';
+    renderCalendar();
+  }
+
+  function setMonth(m) {
+    calMonth = m;
+    selectedArchiveDay = null;
+    document.getElementById('archiveNotes').innerHTML = '';
+    renderCalendar();
+  }
+
+  function setYear(y) {
+    calYear = y;
+    selectedArchiveDay = null;
+    document.getElementById('archiveNotes').innerHTML = '';
+    renderCalendar();
+  }
+
+  function selectArchiveDay(dateStr) {
+    selectedArchiveDay = selectedArchiveDay === dateStr ? null : dateStr;
+    renderCalendar();
+    renderArchiveDay(selectedArchiveDay);
+  }
+
+  function renderArchiveDay(dateStr) {
+    const container = document.getElementById('archiveNotes');
+    if (!dateStr) { container.innerHTML = ''; return; }
+
+    const dayNotes = notes.filter(n => noteDay(n) === dateStr);
+    if (dayNotes.length === 0) { container.innerHTML = ''; return; }
+
+    const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    container.innerHTML = `
+      <div class="archive-day-notes">
+        <div class="archive-day-header">${label}</div>
+        ${dayNotes.map(n => {
+          const time = new Date(n.created).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          return `
+            <div class="archive-note">
+              <div class="note-person">${esc(n.person || 'No person')}</div>
+              <div class="note-body">${esc(n.text)}</div>
+              <div class="note-footer">
+                <div class="note-details">${renderDetailLines(n)}</div>
+                <span class="note-time">${time}</span>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  function exportNotes(scope) {
+    const today = todayStr();
+    const toExport = scope === 'today' ? notes.filter(n => noteDay(n) === today) : notes;
+    if (!toExport.length) return;
+    const rows = [['Note', 'Person', 'Team', 'Position', 'Manager', 'Created']];
+    toExport.forEach(n => rows.push([n.text, n.person, n.team, n.position, n.manager, n.created]));
+    const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ticket-notes.csv';
+    a.click();
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1500);
+  }
+
+  initCalendar();
+  render();
+</script>
+</body>
+</html>
